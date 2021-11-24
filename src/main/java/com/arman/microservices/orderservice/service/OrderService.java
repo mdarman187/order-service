@@ -7,6 +7,7 @@ import com.arman.microservices.orderservice.common.TransactionRequest;
 import com.arman.microservices.orderservice.common.TransactionResponse;
 import com.arman.microservices.orderservice.entity.Order;
 import com.arman.microservices.orderservice.repository.OrderRepository;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +27,9 @@ public class OrderService {
     @Autowired
     @Lazy
     private RestTemplate template;
+    private static final String ORDER_SERVICE = "Orderservice" ;
 
+    @CircuitBreaker(name = ORDER_SERVICE, fallbackMethod = "userFallback")
     public TransactionResponse saveOrder(TransactionRequest request) throws JsonProcessingException {
         String response = "";
         Order order = request.getOrder();
@@ -41,5 +44,9 @@ public class OrderService {
         logger.info("Order Service getting Response from Payment-Service : "+new ObjectMapper().writeValueAsString(response));
         repository.save(order);
         return new TransactionResponse(order, paymentResponse.getAmount(), paymentResponse.getTransactionId(), response);
+    }
+
+    public TransactionResponse userFallback(Exception e){
+        return new TransactionResponse();
     }
 }
